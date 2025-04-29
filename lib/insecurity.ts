@@ -13,6 +13,7 @@ import jws from 'jws'
 import sanitizeHtmlLib from 'sanitize-html'
 import sanitizeFilenameLib from 'sanitize-filename'
 import * as utils from './utils'
+import bcrypt from 'bcrypt';
 
 /* jslint node: true */
 // eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
@@ -41,14 +42,26 @@ interface IAuthenticatedUsers {
 }
 
 export const hash = (data: string) => crypto.createHash('md5').update(data).digest('hex')
+export function hashPass(data:string){
+  const salt =  bcrypt.genSaltSync(10);
+  const hashed = bcrypt.hashSync(data, salt);
+  return hashed
+}
 export const hmac = (data: string) => crypto.createHmac('sha256', 'pa4qacea4VK9t9nGv7yZtwmj').update(data).digest('hex')
 
 export const cutOffPoisonNullByte = (str: string) => {
-  const nullByte = '%00'
-  if (utils.contains(str, nullByte)) {
-    return str.substring(0, str.indexOf(nullByte))
+  try {
+    let decoded = str
+    let prev = ''
+    while (decoded !== prev) {
+      prev = decoded
+      decoded = decodeURIComponent(decoded)
+    }
+    const nullIndex = decoded.indexOf('\x00')
+    return nullIndex !== -1 ? decoded.substring(0, nullIndex) : decoded
+  } catch {
+    return str
   }
-  return str
 }
 
 export const isAuthorized = () => expressJwt(({ secret: publicKey }) as any)
